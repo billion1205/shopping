@@ -1,5 +1,6 @@
-const db = require("../data/database");
-const mongodb = require("mongodb");
+const mongodb = require('mongodb');
+
+const db = require('../data/database');
 
 class Product {
   constructor(productData) {
@@ -7,7 +8,7 @@ class Product {
     this.summary = productData.summary;
     this.price = +productData.price;
     this.description = productData.description;
-    this.image = productData.image; //외부에서 이미지이름만 .image속성으로 넣어서 이름만 받아진다.
+    this.image = productData.image; // the name of the image file
     this.updateImageData();
     if (productData._id) {
       this.id = productData._id.toString();
@@ -24,10 +25,11 @@ class Product {
     }
     const product = await db
       .getDb()
-      .collection("products")
+      .collection('products')
       .findOne({ _id: prodId });
+
     if (!product) {
-      const error = new Error("Could not find product with provided id.");
+      const error = new Error('Could not find product with provided id.');
       error.code = 404;
       throw error;
     }
@@ -35,16 +37,33 @@ class Product {
     return new Product(product);
   }
 
-  updateImageData() {
-    this.imagePath = `product-data/images/${this.image}`;
-    this.imageUrl = `/products/assets/images/${this.image}`;
-  }
-
   static async findAll() {
-    const products = await db.getDb().collection("products").find().toArray();
+    const products = await db.getDb().collection('products').find().toArray();
+
     return products.map(function (productDocument) {
       return new Product(productDocument);
     });
+  }
+
+  static async findMultiple(ids) {
+    const productIds = ids.map(function(id) {
+      return new mongodb.ObjectId(id);
+    })
+    
+    const products = await db
+      .getDb()
+      .collection('products')
+      .find({ _id: { $in: productIds } })
+      .toArray();
+
+    return products.map(function (productDocument) {
+      return new Product(productDocument);
+    });
+  }
+
+  updateImageData() {
+    this.imagePath = `product-data/images/${this.image}`;
+    this.imageUrl = `/products/assets/images/${this.image}`;
   }
 
   async save() {
@@ -55,30 +74,33 @@ class Product {
       description: this.description,
       image: this.image,
     };
+
     if (this.id) {
       const productId = new mongodb.ObjectId(this.id);
+
       if (!this.image) {
         delete productData.image;
       }
-      await db.getDb().collection("products").updateOne(
+
+      await db.getDb().collection('products').updateOne(
         { _id: productId },
         {
           $set: productData,
         }
       );
     } else {
-      await db.getDb().collection("products").insertOne(productData);
+      await db.getDb().collection('products').insertOne(productData);
     }
   }
 
-  async replaceImage(newImage) {
+  replaceImage(newImage) {
     this.image = newImage;
     this.updateImageData();
   }
 
   remove() {
     const productId = new mongodb.ObjectId(this.id);
-    return db.getDb().collection("products").deleteOne({ _id: productId });
+    return db.getDb().collection('products').deleteOne({ _id: productId });
   }
 }
 
